@@ -81,6 +81,7 @@ if(BUILD_TESTS)
     target_link_libraries(matrec_test
             PUBLIC matrec::matrec
             PUBLIC GTest::GTest
-            PUBLIC cmr
+            PUBLIC CMR::cmr
     )
 endif()
+
