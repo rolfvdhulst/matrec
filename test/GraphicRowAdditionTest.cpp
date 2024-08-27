@@ -26,14 +26,14 @@ CMR_ERROR cmrTestGraphicness(bool& result, const TestCase& testCase){
     }
 
     FILE * readFile = fopen(filename.c_str() ,"r");
-    CMR_CALL(CMRchrmatCreateFromSparseStream(cmr,readFile,&matrix));
+    CMR_CALL(CMRchrmatCreateFromSparseStream(cmr, readFile, &matrix));
     fclose(readFile);
     unlink(filename.c_str());//Destroy the file again.
 
     CMR_GRAPHIC_STATISTICS stats;
-    CMR_CALL(CMRstatsGraphicInit(&stats));
+    CMR_CALL(CMRgraphicStatsInit(&stats));
     bool isGraphic;
-    CMR_CALL(CMRtestGraphicMatrix(cmr,matrix,&isGraphic,NULL,NULL,NULL,NULL,&stats));
+    CMR_CALL(CMRgraphicTestMatrix(cmr, matrix, &isGraphic, NULL, NULL, NULL, NULL, &stats, std::numeric_limits<double>::infinity()));
 
     result = isGraphic;
 
