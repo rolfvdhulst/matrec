@@ -10,10 +10,12 @@ Robert E. Bixby, Donald K. Wagner, (1988) An Almost Linear-Time Algorithm for Gr
 
 and a row-wise algorithm, which is based on our recent work:
 
-Rolf van der Hulst, Matthias Walter, (2024) A Row-wise Algorithm for Graph Realization. [Arxiv link]()
+Rolf van der Hulst, Matthias Walter, (2024) A Row-wise Algorithm for Graph Realization. [Arxiv link](https://arxiv.org/abs/2408.12869)
 
 In Network.h, we adapted the algorithms from Graphic.h to the network matrix setting.
 If you use this software in a publication, please cite our preprint.
+
+This project is supported by the Dutch Research Council (NWO) on grant number OCENW.M20.151.
 
 ### Dependencies
 The library has no dependencies. 
