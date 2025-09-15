@@ -1,5 +1,6 @@
 #include "matrec/Network.h"
 #include <assert.h>
+#include <string.h>
 
 //Columns 0..x correspond to elements 0..x
 //Rows 0..y correspond to elements -1.. -y-1
@@ -4365,6 +4366,7 @@ typedef struct {
 } MATRECRowReducedComponent;
 
 struct MATRECNetworkRowAdditionImpl {
+    bool prevItCleanedUp;
     bool remainsNetwork;
 
     MATRECRowReducedMember *reducedMembers;
@@ -4959,6 +4961,9 @@ static void zeroOutColors(MATRECNetworkDecomposition *dec, MATRECNetworkRowAddit
 
 }
 static void cleanUpPreviousIteration(MATRECNetworkDecomposition * dec, MATRECNetworkRowAddition * newRow){
+    if (newRow->prevItCleanedUp) {
+        return;
+    }
     //zero out coloring information from previous check
     for (int i = 0; i < newRow->numReducedMembers; ++i) {
         if (SPQRnodeIsValid(newRow->reducedMembers[i].coloredNode)) {
@@ -4986,6 +4991,7 @@ static void cleanUpPreviousIteration(MATRECNetworkDecomposition * dec, MATRECNet
       assert(!newRow->isArcCutReversed[i]);
     }
 #endif
+    newRow->prevItCleanedUp = true;
 }
 
 static void rigidFindStarNodes(MATRECNetworkDecomposition * dec, MATRECNetworkRowAddition * newRow,
@@ -7797,6 +7803,7 @@ MATREC_ERROR MATRECNetworkRowAdditionCheck(MATRECNetworkDecomposition * dec, MAT
 
     newRow->remainsNetwork = true;
     cleanUpPreviousIteration(dec,newRow);
+    newRow->prevItCleanedUp = false;
 
     MATREC_CALL(newRowUpdateRowInformation(dec,newRow,row,columns,columnValues,numColumns));
     MATREC_CALL(constructRowReducedDecomposition(dec,newRow));
@@ -7913,4 +7920,112 @@ MATREC_ERROR MATRECNetworkRowAdditionAdd(MATRECNetworkDecomposition *dec, MATREC
 
 bool MATRECNetworkRowAdditionRemainsNetwork(const MATRECNetworkRowAddition *newRow){
     return newRow->remainsNetwork;
+}
+
+void MATRECNetworkDecompositionRemoveComponent(MATRECNetworkDecomposition * dec,
+                                               const MATREC_row*            componentRows,      /**< The rows of the connected component*/
+                                               int                   numRows,            /**< The number of rows */
+                                               const MATREC_col*            componentCols,      /**< The columns of the connected component*/
+                                               int                   numCols             /**< The number of columns */){
+    //The below just removes the 'link' but not the internal datastructures.
+    //This is sufficient for our purposes, as long as we do not re-introduce any of the 'negated' rows/columns back into the decomposition.
+
+    for( int i = 0; i < numRows; ++i )
+    {
+        MATREC_row row = componentRows[i];
+        if( SPQRarcIsValid(dec->rowArcs[row]) )
+        {
+            dec->rowArcs[row] = SPQR_INVALID_ARC;
+        }
+    }
+
+    for( int i = 0; i < numCols; ++i )
+    {
+        MATREC_col col = componentCols[i];
+        if( SPQRarcIsValid(dec->columnArcs[col]) )
+        {
+            dec->columnArcs[col] = SPQR_INVALID_ARC;
+        }
+    }
+}
+
+MATREC_ERROR MATRECNetworkDecompositionCopy(MATREC * env, MATRECNetworkDecomposition* orig, MATRECNetworkDecomposition** pNew){
+    assert(env);
+    assert(orig);
+    assert(pNew);
+    assert(!*pNew);
+
+    MATREC_CALL(MATRECallocBlock(env, pNew));
+    MATRECNetworkDecomposition *dec = *pNew;
+    dec->env = env;
+
+    //Since we just have arrays with indices, we can simply copy the relevant arrays
+    //TODO: use memcpy
+    //TODO: write/adapt function to allow to overwrite existing decomposition to avoid allocations/frees
+
+    //Copy arc data
+    {
+        assert(orig->memArcs > 0);
+        dec->memArcs = orig->memArcs;
+        dec->numArcs = orig->numArcs;
+        MATREC_CALL(MATRECallocBlockArray(env, &dec->arcs, (size_t) dec->memArcs));
+        for (spqr_arc i = 0; i < dec->memArcs; ++i) {
+            dec->arcs[i] = orig->arcs[i];
+        }
+        dec->firstFreeArc = orig->firstFreeArc;
+    }
+
+    //Copy member data
+    {
+        assert(orig->memMembers > 0);
+        dec->memMembers = orig->memMembers;
+        dec->numMembers = orig->numMembers;
+        MATREC_CALL(MATRECallocBlockArray(env, &dec->members, (size_t) dec->memMembers));
+        for (spqr_member i = 0; i < dec->memMembers; ++i) {
+            dec->members[i] = orig->members[i];
+        }
+    }
+
+    //Initialize node array data
+    {
+        assert(orig->memNodes > 0);
+        dec->memNodes = orig->memNodes;
+        dec->numNodes = orig->numNodes;
+        MATREC_CALL(MATRECallocBlockArray(env, &dec->nodes, (size_t) dec->memNodes));
+        for (spqr_node i = 0; i < dec->memNodes; ++i) {
+            dec->nodes[i] = orig->nodes[i];
+        }
+    }
+
+    //Initialize mappings for rows
+    {
+        dec->memRows = orig->memRows;
+        dec->numRows = orig->numRows;
+        MATREC_CALL(MATRECallocBlockArray(env, &dec->rowArcs, (size_t) dec->memRows));
+        for (int i = 0; i < dec->memRows; ++i) {
+            dec->rowArcs[i] = orig->rowArcs[i];
+        }
+    }
+    //Initialize mappings for columns
+    {
+        dec->memColumns = orig->memColumns;
+        dec->numColumns = orig->numColumns;
+        MATREC_CALL(MATRECallocBlockArray(env, &dec->columnArcs, (size_t) dec->memColumns));
+        for (int i = 0; i < dec->memColumns; ++i) {
+            dec->columnArcs[i] = orig->columnArcs[i];
+        }
+    }
+
+    dec->numConnectedComponents = orig->numConnectedComponents;
+    return MATREC_OKAY;
+}
+
+/**
+ * @brief Cleans up the internal datastructures to be ready for another check() call. Should always be called at the end
+ * of an iteration
+ * @param dec Current MATREC-decomposition
+ * @param newRow Data structure containing information on how to add the new row.
+ */
+void MATRECNetworkRowAdditionCleanup(MATRECNetworkDecomposition *dec, MATRECNetworkRowAddition *newRow) {
+    cleanUpPreviousIteration(dec, newRow);
 }

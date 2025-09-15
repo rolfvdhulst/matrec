@@ -15,6 +15,8 @@ typedef struct MATRECNetworkDecompositionImpl MATRECNetworkDecomposition;
 
 MATREC_ERROR MATRECNetworkDecompositionCreate(MATREC * env, MATRECNetworkDecomposition **pDecomposition, int numRows, int numColumns);
 
+MATREC_ERROR MATRECNetworkDecompositionCopy(MATREC * env, MATRECNetworkDecomposition* orig, MATRECNetworkDecomposition** pNew);
+
 void MATRECNetworkDecompositionFree(MATRECNetworkDecomposition **pDecomposition);
 
 /**
@@ -32,7 +34,13 @@ bool MATRECNetworkDecompositionContainsColumn(const MATRECNetworkDecomposition *
 bool MATRECNetworkDecompositionIsMinimal(const MATRECNetworkDecomposition * decomposition);
 
 //TODO: method to convert decomposition into a realization
-//TODO: method to remove complete components of the MATREC tree
+
+/** A bit hacky; unlinks the given rows and columns that form a connected component. */
+void MATRECNetworkDecompositionRemoveComponent(MATRECNetworkDecomposition * decomposition,
+                                               const MATREC_row*            componentRows,      /**< The rows of the connected component*/
+                                               int                   numRows,            /**< The number of rows */
+                                               const MATREC_col*            componentCols,      /**< The columns of the connected component*/
+                                               int                   numCols             /**< The number of columns */);
 
 /**
  * A method to check if the cycle stored in the MATREC cycle matches the given array. Mostly useful in testing.
@@ -120,6 +128,14 @@ MATREC_ERROR MATRECNetworkRowAdditionCheck(MATRECNetworkDecomposition * dec, MAT
  * @param newRow Data structure containing information on how to add the new row.
  */
 MATREC_ERROR MATRECNetworkRowAdditionAdd(MATRECNetworkDecomposition *dec, MATRECNetworkRowAddition *newRow);
+
+/**
+ * @brief Cleans up the internal datastructures to be ready for another check() call. Should always be called at the end
+ * of an iteration
+ * @param dec Current MATREC-decomposition
+ * @param newRow Data structure containing information on how to add the new row.
+ */
+void MATRECNetworkRowAdditionCleanup(MATRECNetworkDecomposition *dec, MATRECNetworkRowAddition *newRow);
 
 /**
  * TODO: specify (and implement) behavior in special cases (e.g. zero rows, rows with a single entry?)
