@@ -7746,6 +7746,8 @@ MATREC_ERROR MATRECcreateNetworkRowAddition(MATREC* env, MATRECNetworkRowAdditio
     newRow->mergeTreeCallData = NULL;
     newRow->memMergeTreeCallData = 0;
 
+    newRow->prevItCleanedUp = true;
+
     return MATREC_OKAY;
 }
 
