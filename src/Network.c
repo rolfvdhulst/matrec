@@ -2059,6 +2059,7 @@ void MATRECfreeNetworkColumnAddition(MATREC *env, MATRECNetworkColumnAddition **
     MATRECfreeBlockArray(env, &newCol->memberInformation);
     MATRECfreeBlockArray(env, &newCol->reducedComponents);
     MATRECfreeBlockArray(env, &newCol->reducedMembers);
+    MATRECfreeBlockArray(env, &newCol->leafMembers);
 
     MATRECfreeBlock(env, pNewCol);
 }
